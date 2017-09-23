@@ -1,64 +1,61 @@
 # -*- coding: utf-8 -*-
 
+import os
+import logging
 import datetime
 import pytz
 import json
 import requests
 
 
-DAPULSE_API_KEY = "22c45794274555a13fc35ce4d0a0a41b"
-START_MESSAGE = "Bom dia! Já estou aqui. No aguardo mestre."
+DAPULSE_BASE_URL = "https://api.dapulse.com:443"
+DAPULSE_ENDPOINTS = {
+	'v1': {
+		'users': 'v1/users.json', # Get all users
+		'updates': 'v1/updates.json', # Get all users
+		'pulses': 'v1/pulses.json', # Get all the account's pulses
+	},
+}
+
+logger = logging.getLogger()
 
 
 def utc_now():
 	return datetime.datetime.now(tz=pytz.utc)
 
 
-class DapulseBot():
+class DaPulse(object):
+	''' DaPulse wrapper '''
 
-	def __init__(self, api_key=DAPULSE_API_KEY):
+	def __init__(self, api_key=None, api_version='v1', endpoints=DAPULSE_ENDPOINTS):
+
+		if api_key is None:
+			raise Exception('Needed API KEY.')
+
+		if not type(endpoints) == dict:
+			raise Exception('Malformated endpoints url.')
+
 		self.api_key = api_key
+		self.api_version = api_version
+		self.endpoints = endpoints
+		self.headers = {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
+		self.data = {'api_key': self.api_key}
 
-	def start(self, message):
-		self.sendMessage(chat_id=message.chat_id, text=START_MESSAGE)
-
-	def get_pulses(self, board_id):
-		r = requests.get("https://api.dapulse.com:443/v1/boards/"+ board_id +"/pulses.json?api_key=" + self.api_key) # api_key
+	def get(self, endpoint):
+		''' get transaction '''
+		r = requests.get(endpoint, params=self.data, headers=self.headers)
 		if r.status_code == 200:
 			data = json.loads(r.content.decode('utf-8'))
 			return data
 		return []
 
-	def add_pulse(self, pulse):
-		'''
-		@pulse = {
-			board_id: ,
-			user_id: ,
-			name: ,
-			photo_from_url: ,
-			update: {
-				text: "Task add from bot",
-				announcement: True,
-			},
-			group_id: ,
-		}
-		'''
-		url = "https://api.dapulse.com:443/v1/boards/%(board_id)s/pulses.json?api_key=%(api_key)s" % {
-			'board_id': pulse.get('board_id'),
-			'api_key': self.api_key
-		} # board_id, api_key
-		payload = {
-			"pulse": {
-				"name": pulse.get('name')
-			},
-			"user_id": pulse.get('user_id'),
-			"group_id": pulse.get('group_id'),
-		}
-
-		r = requests.post(url, data=json.dumps(payload))
-		if r.status_code == 201:
-			return "Added pulse: %s" % pulse
-		return "Error! Code: " + str(r.status_code)
+	def post(self, endpoint):
+		''' get transaction '''
+		r = requests.get(endpoint, params=self.data, headers=self.headers)
+		if r.status_code in [200, 201, 204]:
+			data = json.loads(r.content.decode('utf-8'))
+			return data
+		return []
 
 	def parse_request(self, data):
 		pass
